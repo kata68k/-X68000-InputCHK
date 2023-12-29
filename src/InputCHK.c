@@ -64,8 +64,8 @@ int16_t		nMousePosX[5] 		= {8, 72, 0, 136, 8};
 int16_t		nMousePosY[5] 		= {0, 0, 28, 28, 32 };
 int16_t		nMouseMode[5] 		= {1, 1, 2, 2, 3};
 
-int8_t		sJoyName[8][8] 		= { "UP", "DOWN", "LEFT", "RIGHT", "      ", "B", "A", "      " };
-int16_t		nJoyPosX[8] 		= { 32, 32,  0, 64, 0, 160, 224, 0 };
+int8_t		sJoyName[8][8] 		= { "UP", "DOWN", "LEFT", "RIGHT", "      ", "A", "B", "      " };
+int16_t		nJoyPosX[8] 		= { 32, 32,  0, 64, 0, 224, 160, 0 };
 int16_t		nJoyPosY[8] 		= {  0, 64, 32, 32, 0,  64,  64, 0 };
 int16_t		nJoyMode[8] 		= {  1,  1,  1,  1, 0,   2,   2, 0 };
 
@@ -346,7 +346,7 @@ int16_t main(int16_t argc, int8_t** argv)
 
 				T_Box( 0, 0, 768, 512, 0xFFFF, T_WHITE );
 				_iocs_b_putmes(T_WHITE, 1, 28, 40, "Press and hold the ESC key to exit.");
-				_iocs_b_putmes(T_WHITE, 40, 29, 52, "Input Check PRO-68k(InputCHK.x) ver1.02 (C)2023 カタ");
+				_iocs_b_putmes(T_WHITE, 40, 29, 52, "Input Check PRO-68k(InputCHK.x) ver1.03 (C)2023 カタ");
 				
 				g_Vwait = 1;
 
@@ -668,13 +668,15 @@ int16_t main(int16_t argc, int8_t** argv)
 
 					for(j = 0; j < 8; j++)
 					{
-
-						num = j;
+						if(j == 5)num = 6;
+						else if(j == 6)num = 5;
+						else num = j;
+						
 						x = nJoyPosX[num] + x_ofst;
 						y = nJoyPosY[num] + y_ofst;
 
-						bit		= (bitsns >> j) & 0x01;
-						bit_o	= (joy_old[i] >> j) & 0x01;
+						bit		= (bitsns >> num) & 0x01;
+						bit_o	= (joy_old[i] >> num) & 0x01;
 
 						if( bit != 0 )
 						{

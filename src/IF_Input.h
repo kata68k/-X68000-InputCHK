@@ -10,8 +10,8 @@
 #define JOY_DOWN	(0x02)
 #define JOY_LEFT	(0x04)
 #define JOY_RIGHT	(0x08)
-#define JOY_B		(0x20)
-#define JOY_A		(0x40)
+#define JOY_A		(0x20)
+#define JOY_B		(0x40)
 #define ESC_S		(27)
 
 /* ジョイスティックその２ */
