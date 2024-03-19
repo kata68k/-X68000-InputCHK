@@ -39,6 +39,7 @@ static struct {
 int32_t	g_nIntLevel = 0;
 int32_t	g_nIntCount = 0;
 
+static void (*trap_12)();	/* 元の trap 12 ベクタを保存*/
 static void (*trap_14)();	/* 元の trap 14 ベクタを保存*/
 
 extern int _main;			/* スタートアップのダミー */
@@ -101,6 +102,8 @@ static void my_abort (void)
 	if (usr_abort)
 		usr_abort();
 	
+	Fprint (buf, "%s\r\n", "my_abort");
+
 	if (trapbuf.flag > 0)
 	{
 		extern int _SSTA;
@@ -120,10 +123,28 @@ static void my_abort (void)
 
 void init_trap14 (void)
 {
-	trap_14 = (void *)INTVCG (0x2E);
+	trap_14 = (void *)INTVCG (0x2E);	/* $2Eはエラー表示 */
 	INTVCS (0x2E, trap14);
 	INTVCS (0xFFF2, my_abort);
 	INTVCS (0xFFF1, my_abort);
+}
+
+/*===========================================================================================*/
+/* 関数名	：	*/
+/* 引数		：	*/
+/* 戻り値	：	*/
+/*-------------------------------------------------------------------------------------------*/
+/* 機能		：	*/
+/*===========================================================================================*/
+static void interrupt trap12(void)
+{
+	IRTE();	/* 割り込み関数の最後で必ず実施 */
+}
+
+void init_trap12 (void)
+{
+	trap_12 = (void *)INTVCG (0x2C);	/* $2EはCOPY処理 */
+	INTVCS (0x2C, trap12);
 }
 
 /*===========================================================================================*/

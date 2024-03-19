@@ -75,6 +75,7 @@ int16_t		nJoyMode[8] 		= {  1,  1,  1,  1, 0,   2,   2, 0 };
 int16_t main(int16_t, int8_t**);
 static void App_Init(void);
 static void App_exit(void);
+static void	App_InputCheck(void);
 int16_t	BG_main(uint32_t);
 void App_TimerProc( void );
 int16_t App_RasterProc( uint16_t * );
@@ -99,20 +100,11 @@ int16_t main(int16_t argc, int8_t** argv)
 {
 	int16_t	ret = 0;
 
-
-	uint16_t	uFreeRunCount=0u;
-
-	int16_t	loop;
-	int16_t	pushCount = 0;
-
-	uint8_t	bMode;
-	
-	ST_TASK		stTask = {0}; 
-	
 	/* 変数の初期化 */
 	SetGameMode(1);
 	
 	/* 例外ハンドリング処理 */
+	init_trap12();			/* COPYキー無効化処理 */
 	usr_abort = App_exit;	/* 例外発生で終了処理を実施する */
 	init_trap14();			/* デバッグ用致命的エラーハンドリング */
 #if 0	/* アドレスエラー発生 */
@@ -126,16 +118,184 @@ int16_t main(int16_t argc, int8_t** argv)
 
 	App_Init();	/* 初期化 */
 	
-	loop = 1;
-
 	SetGameMode(1);
 	SetTaskInfo(SCENE_INIT);	/* 初期化シーンへ設定 */
 	
 	/* 乱数 */
 	srandom(TIMEGET());	/* 乱数の初期化 */
+
+	App_InputCheck();	/* インプットチェック処理(COPYキー対応) */
+
+	App_exit();	/* 終了処理 */
+	
+	return ret;
+}
+
+/*===========================================================================================*/
+/* 関数名	：	*/
+/* 引数		：	*/
+/* 戻り値	：	*/
+/*-------------------------------------------------------------------------------------------*/
+/* 機能		：	*/
+/*===========================================================================================*/
+static void App_Init(void)
+{
+#ifdef DEBUG	/* デバッグコーナー */
+	puts("App_Init 開始");
+#endif
+	/* スーパーバイザーモード開始 */
+	g_nSuperchk = _dos_super(0);
+	if( g_nSuperchk < 0 ) {
+#ifdef DEBUG	/* デバッグコーナー */
+		puts("App_Init すでに_dos_super");
+#endif
+	} else {
+#ifdef DEBUG	/* デバッグコーナー */
+		puts("App_Init _dos_super開始");
+#endif
+	}
+
+	/* MFP */
+	MFP_INIT();	/* V-Sync割り込み等の初期化処理 */
+#ifdef DEBUG	/* デバッグコーナー */
+	puts("App_Init MFP");
+#endif
+
+	/* 画面 */
+	g_nCrtmod = CRTC_INIT(16);	/* mode=16 764x512 col:16 31kHz */
+#ifdef DEBUG	/* デバッグコーナー */
+	puts("App_Init 画面");
+#endif
+
+	/* テキスト */
+	T_INIT();	/* テキストＶＲＡＭ初期化 */
+	T_PALET();	/* テキストパレット初期化 */
+#ifdef DEBUG	/* デバッグコーナー */
+	puts("App_Init T_INIT");
+#endif
+	
+	/* グラフィック */
+	G_INIT();			/* 画面の初期設定 */
+	G_CLR();			/* クリッピングエリア全開＆消す */
+	G_HOME(0);			/* ホーム位置設定 */
+//	G_VIDEO_INIT();		/* ビデオコントローラーの初期化 */
+	G_PaletteSetZero();	/* 0番パレット変更 */
+#ifdef DEBUG	/* デバッグコーナー */
+//	puts("App_Init グラフィック");
+#endif
+	
+	/* スプライト／ＢＧ */
+//	PCG_INIT();	/* スプライト／ＢＧの初期化 */
+//	PCG_INIT_CHAR();	/* スプライト＆ＢＧ定義セット */
+//	PCG_VIEW(0x00u);	/* スプライト＆ＢＧ非表示 */
+#ifdef DEBUG	/* デバッグコーナー */
+//	puts("App_Init スプライト／ＢＧ");
+#endif
+
+	/* マウス初期化 */
+//	Mouse_Init();	/* マウス初期化 */
+#ifdef DEBUG	/* デバッグコーナー */
+	puts("App_Init マウス");
+#endif
+	
+#ifdef DEBUG	/* デバッグコーナー */
+	puts("App_Init 終了");
+#endif
+}
+
+/*===========================================================================================*/
+/* 関数名	：	*/
+/* 引数		：	*/
+/* 戻り値	：	*/
+/*-------------------------------------------------------------------------------------------*/
+/* 機能		：	*/
+/*===========================================================================================*/
+static void App_exit(void)
+{
+	/* テキストクリア */
+	T_Clear();	/* テキストクリア */
+	
+	/* グラフィック */
+	G_CLR();			/* クリッピングエリア全開＆消す */
+
+#ifdef DEBUG	/* デバッグコーナー */
+	puts("App_exit 開始");
+#endif
+	
+	if(g_bExit == TRUE)
+	{
+		puts("エラーをキャッチ！ ESC to skip");
+		KeyHitESC();	/* デバッグ用 */
+	}
+
+	Mouse_Exit();	/* マウス非表示 */
+	
+	/* スプライト＆ＢＧ */
+//	PCG_VIEW(0x00u);		/* スプライト＆ＢＧ非表示 */
+#ifdef DEBUG	/* デバッグコーナー */
+	puts("App_exit スプライト");
+#endif
+
+	/* 画面 */
+	CRTMOD(0x100 + g_nCrtmod);	/* モードをもとに戻す */
+#ifdef DEBUG	/* デバッグコーナー */
+	puts("App_exit 画面");
+#endif
+
+	/* MFP */
+	MFP_EXIT();				/* MFP関連の解除 */
+#ifdef DEBUG	/* デバッグコーナー */
+	puts("App_exit MFP");
+#endif
+
+	/* テキスト */
+	T_EXIT();				/* テキスト終了処理 */
+#ifdef DEBUG	/* デバッグコーナー */
+	puts("App_exit テキスト");
+#endif
+
+	MyMfree(0);				/* 全てのメモリを解放 */
+#ifdef DEBUG	/* デバッグコーナー */
+	puts("App_exit メモリ");
+#endif
+
+	_dos_kflushio(0xFF);	/* キーバッファをクリア */
+#ifdef DEBUG	/* デバッグコーナー */
+	puts("App_exit キーバッファクリア");
+#endif
+
+	/*スーパーバイザーモード終了*/
+	_dos_super(g_nSuperchk);
+#ifdef DEBUG	/* デバッグコーナー */
+	puts("App_exit スーパーバイザーモード終了");
+#endif
+	
+#ifdef DEBUG	/* デバッグコーナー */
+	puts("App_exit 終了");
+#endif
+}
+
+/*===========================================================================================*/
+/* 関数名	：	*/
+/* 引数		：	*/
+/* 戻り値	：	*/
+/*-------------------------------------------------------------------------------------------*/
+/* 機能		：	*/
+/*===========================================================================================*/
+static void	App_InputCheck(void)
+{
+	uint16_t	uFreeRunCount=0u;
+	int16_t		loop;
+	int16_t		pushCount = 0;
+	uint8_t		bMode;
+
+	ST_TASK		stTask = {0}; 
+
+	loop = 1;
 	
 	do	/* メインループ処理 */
 	{
+
 		uint32_t time_st;
 
 		/* 終了処理 */
@@ -280,6 +440,8 @@ int16_t main(int16_t argc, int8_t** argv)
 						case 1:		/* ボタン１ */
 						{
 							T_Box(nMousePosX[i] + x_ofst, nMousePosY[i] + y_ofst, 64, 32, 0xFFFF, T_WHITE );
+							T_yLine(nMousePosX[i] + x_ofst, nMousePosY[i] + y_ofst + 32, 64, 0xFFFF, T_WHITE);
+							T_yLine(nMousePosX[i] + x_ofst + 63, nMousePosY[i] + y_ofst + 32, 64, 0xFFFF, T_WHITE);
 							break;
 						}
 						case 2:		/* ボタン２ */
@@ -346,7 +508,7 @@ int16_t main(int16_t argc, int8_t** argv)
 
 				T_Box( 0, 0, 768, 512, 0xFFFF, T_WHITE );
 				_iocs_b_putmes(T_WHITE, 1, 28, 40, "Press and hold the ESC key to exit.");
-				_iocs_b_putmes(T_WHITE, 40, 29, 52, "Input Check PRO-68k(InputCHK.x) ver1.03 (C)2023 カタ");
+				_iocs_b_putmes(T_WHITE, 41, 30, 52, "Input Check PRO-68k(InputCHK.x) ver1.04 (C)2023-2024 カタ");
 				
 				g_Vwait = 1;
 
@@ -734,155 +896,7 @@ int16_t main(int16_t argc, int8_t** argv)
 	while( loop );
 
 	g_bExit = FALSE;
-	App_exit();	/* 終了処理 */
-	
-	return ret;
 }
-
-/*===========================================================================================*/
-/* 関数名	：	*/
-/* 引数		：	*/
-/* 戻り値	：	*/
-/*-------------------------------------------------------------------------------------------*/
-/* 機能		：	*/
-/*===========================================================================================*/
-static void App_Init(void)
-{
-#ifdef DEBUG	/* デバッグコーナー */
-	puts("App_Init 開始");
-#endif
-	/* スーパーバイザーモード開始 */
-	g_nSuperchk = _dos_super(0);
-	if( g_nSuperchk < 0 ) {
-#ifdef DEBUG	/* デバッグコーナー */
-		puts("App_Init すでに_dos_super");
-#endif
-	} else {
-#ifdef DEBUG	/* デバッグコーナー */
-		puts("App_Init _dos_super開始");
-#endif
-	}
-
-	/* MFP */
-	MFP_INIT();	/* V-Sync割り込み等の初期化処理 */
-#ifdef DEBUG	/* デバッグコーナー */
-	puts("App_Init MFP");
-#endif
-
-	/* 画面 */
-	g_nCrtmod = CRTC_INIT(16);	/* mode=16 764x512 col:16 31kHz */
-#ifdef DEBUG	/* デバッグコーナー */
-	puts("App_Init 画面");
-#endif
-
-	/* テキスト */
-	T_INIT();	/* テキストＶＲＡＭ初期化 */
-	T_PALET();	/* テキストパレット初期化 */
-#ifdef DEBUG	/* デバッグコーナー */
-	puts("App_Init T_INIT");
-#endif
-	
-	/* グラフィック */
-	G_INIT();			/* 画面の初期設定 */
-	G_CLR();			/* クリッピングエリア全開＆消す */
-	G_HOME(0);			/* ホーム位置設定 */
-//	G_VIDEO_INIT();		/* ビデオコントローラーの初期化 */
-	G_PaletteSetZero();	/* 0番パレット変更 */
-#ifdef DEBUG	/* デバッグコーナー */
-//	puts("App_Init グラフィック");
-#endif
-	
-	/* スプライト／ＢＧ */
-//	PCG_INIT();	/* スプライト／ＢＧの初期化 */
-//	PCG_INIT_CHAR();	/* スプライト＆ＢＧ定義セット */
-//	PCG_VIEW(0x00u);	/* スプライト＆ＢＧ非表示 */
-#ifdef DEBUG	/* デバッグコーナー */
-//	puts("App_Init スプライト／ＢＧ");
-#endif
-
-	/* マウス初期化 */
-//	Mouse_Init();	/* マウス初期化 */
-#ifdef DEBUG	/* デバッグコーナー */
-	puts("App_Init マウス");
-#endif
-	
-#ifdef DEBUG	/* デバッグコーナー */
-	puts("App_Init 終了");
-#endif
-}
-
-/*===========================================================================================*/
-/* 関数名	：	*/
-/* 引数		：	*/
-/* 戻り値	：	*/
-/*-------------------------------------------------------------------------------------------*/
-/* 機能		：	*/
-/*===========================================================================================*/
-static void App_exit(void)
-{
-	/* テキストクリア */
-	T_Clear();	/* テキストクリア */
-	
-	/* グラフィック */
-	G_CLR();			/* クリッピングエリア全開＆消す */
-
-#ifdef DEBUG	/* デバッグコーナー */
-	puts("App_exit 開始");
-#endif
-	
-	if(g_bExit == TRUE)
-	{
-		puts("エラーをキャッチ！ ESC to skip");
-		KeyHitESC();	/* デバッグ用 */
-	}
-
-	Mouse_Exit();	/* マウス非表示 */
-	
-	/* スプライト＆ＢＧ */
-//	PCG_VIEW(0x00u);		/* スプライト＆ＢＧ非表示 */
-#ifdef DEBUG	/* デバッグコーナー */
-	puts("App_exit スプライト");
-#endif
-
-	/* 画面 */
-	CRTMOD(0x100 + g_nCrtmod);	/* モードをもとに戻す */
-#ifdef DEBUG	/* デバッグコーナー */
-	puts("App_exit 画面");
-#endif
-
-	/* MFP */
-	MFP_EXIT();				/* MFP関連の解除 */
-#ifdef DEBUG	/* デバッグコーナー */
-	puts("App_exit MFP");
-#endif
-
-	/* テキスト */
-	T_EXIT();				/* テキスト終了処理 */
-#ifdef DEBUG	/* デバッグコーナー */
-	puts("App_exit テキスト");
-#endif
-
-	MyMfree(0);				/* 全てのメモリを解放 */
-#ifdef DEBUG	/* デバッグコーナー */
-	puts("App_exit メモリ");
-#endif
-
-	_dos_kflushio(0xFF);	/* キーバッファをクリア */
-#ifdef DEBUG	/* デバッグコーナー */
-	puts("App_exit キーバッファクリア");
-#endif
-
-	/*スーパーバイザーモード終了*/
-	_dos_super(g_nSuperchk);
-#ifdef DEBUG	/* デバッグコーナー */
-	puts("App_exit スーパーバイザーモード終了");
-#endif
-	
-#ifdef DEBUG	/* デバッグコーナー */
-	puts("App_exit 終了");
-#endif
-}
-
 
 /*===========================================================================================*/
 /* 関数名	：	*/

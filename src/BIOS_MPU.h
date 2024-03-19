@@ -6,6 +6,7 @@
 #define IOCS_SYS_STAT	(0xAC)
 
 extern void init_trap14 (void);
+extern void init_trap12 (void);
 extern uint32_t mpu_cache_clr(void);
 extern int32_t	mpu_stat_chk(void);
 extern void Set_DI(void);
