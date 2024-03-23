@@ -1,5 +1,6 @@
 # -X68000-InputCHK.x  
 入力確認用プログラム（IOCS経由Only）  
+ <img width="640" alt="title" src="../../X68000/Material/202403190013560842.png">
 
 概要：  
 純正以外の入力装置を実機もしくはX68000Zに接続したとき  
